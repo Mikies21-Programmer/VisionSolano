@@ -84,6 +84,8 @@ fun CameraScreen(
     val isFlashlight by viewModel.isFlashlightActive.collectAsState()
     val isGridVisible by viewModel.isGridVisible.collectAsState()
     val snapshotFeedback by viewModel.snapshotFeedback.collectAsState()
+    val systemStatus by viewModel.systemStatus.collectAsState()
+    val streamUrl = viewModel.getStreamUrl()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
@@ -151,7 +153,7 @@ fun CameraScreen(
                         )
                     }
                     Text(
-                        text = "Canal de Video Primario | Sensor OV2640",
+                        text = "Canal de Video Primario | Sensor ${systemStatus.discoveredDevice?.camera?.uppercase() ?: "OV2640"}",
                         style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
                     )
                 }
@@ -165,7 +167,7 @@ fun CameraScreen(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "Wi-Fi: -54 dBm",
+                            text = "Wi-Fi: ${systemStatus.wifiSignalDbm} dBm",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = StatusGreen,
                                 fontWeight = FontWeight.Bold
@@ -268,7 +270,7 @@ fun CameraScreen(
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = if (isStreamPaused) "PAUSA" else "30 FPS",
+                                text = if (isStreamPaused) "PAUSA" else "${systemStatus.fps} FPS",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = if (isStreamPaused) WarningAmber else StatusGreen,
                                     fontWeight = FontWeight.Bold
@@ -285,12 +287,32 @@ fun CameraScreen(
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = "640 x 480",
+                                text = systemStatus.resolution,
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = CyberCyan,
                                     fontWeight = FontWeight.Medium
                                 )
                             )
+                        }
+
+                        if (systemStatus.isSimulated) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(WarningAmber.copy(alpha = 0.2f))
+                                    .border(1.dp, WarningAmber.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "SIMULADO",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = WarningAmber,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                            }
                         }
                     }
 
@@ -353,10 +375,10 @@ fun CameraScreen(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = if (isNightVision) "Modo Infrarrojo / Visión Nocturna" else if (isStreamPaused) "Flujo detenido" else "En espera de transmisión RTSP/HTTP...",
+                        text = if (isNightVision) "Modo Infrarrojo / Visión Nocturna" else if (isStreamPaused) "Flujo detenido" else "Stream: $streamUrl",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = if (isNightVision) StatusGreen else TextSecondary,
-                            fontSize = 12.sp
+                            fontSize = 11.sp
                         )
                     )
                 }

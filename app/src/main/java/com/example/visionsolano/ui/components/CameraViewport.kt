@@ -73,7 +73,12 @@ fun CameraViewport(
     modifier: Modifier = Modifier,
     showDetailedControls: Boolean = true,
     isRecording: Boolean = false,
-    zoomLevel: Float = 1f
+    zoomLevel: Float = 1f,
+    fps: Int = 30,
+    resolution: String = "640 x 480",
+    connectionStatusText: String = "ENLACE ESP-CAM OK",
+    streamUrl: String = "",
+    isSimulated: Boolean = false
 ) {
     // Live simulated timestamp
     var currentTime by remember {
@@ -176,7 +181,7 @@ fun CameraViewport(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isPaused) "PAUSA" else if (isRecording) "REC ●" else "EN VIVO",
+                        text = if (isPaused) "PAUSA" else if (isRecording) "REC ●" else if (isSimulated) "EN VIVO [SIMULADO]" else "EN VIVO",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = if (isPaused) WarningAmber else AlertRed,
                             fontWeight = FontWeight.Bold,
@@ -231,7 +236,7 @@ fun CameraViewport(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = "TRANSMISIÓN ESP-CAM",
+                    text = if (isSimulated) "TRANSMISIÓN ESP-CAM (SIMULADA)" else "TRANSMISIÓN ESP-CAM",
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold,
@@ -267,7 +272,7 @@ fun CameraViewport(
                             .padding(horizontal = 6.dp, vertical = 3.dp)
                     ) {
                         Text(
-                            text = "640 x 480",
+                            text = resolution,
                             style = MaterialTheme.typography.labelSmall.copy(color = CyberCyan)
                         )
                     }
@@ -281,7 +286,7 @@ fun CameraViewport(
                             .padding(horizontal = 6.dp, vertical = 3.dp)
                     ) {
                         Text(
-                            text = if (isPaused) "0 FPS" else "30 FPS",
+                            text = if (isPaused) "0 FPS" else "$fps FPS",
                             style = MaterialTheme.typography.labelSmall.copy(color = StatusGreen)
                         )
                     }
@@ -317,7 +322,7 @@ fun CameraViewport(
                     )
                     Spacer(modifier = Modifier.width(5.dp))
                     Text(
-                        text = "ENLACE ESP-CAM OK",
+                        text = connectionStatusText,
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = StatusGreen,
                             fontSize = 9.sp

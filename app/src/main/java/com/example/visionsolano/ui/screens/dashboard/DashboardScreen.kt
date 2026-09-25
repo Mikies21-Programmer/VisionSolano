@@ -41,6 +41,7 @@ import com.example.visionsolano.ui.components.DeviceStatusCard
 import com.example.visionsolano.ui.components.EventItemCard
 import com.example.visionsolano.ui.components.FpgaAnalysisPanel
 import com.example.visionsolano.ui.components.SurveillanceIcons
+import com.example.visionsolano.ui.theme.AlertRed
 import com.example.visionsolano.ui.theme.CardBorderColor
 import com.example.visionsolano.ui.theme.CyberCyan
 import com.example.visionsolano.ui.theme.DarkBackground
@@ -92,20 +93,69 @@ fun DashboardScreen(
                 onCapture = { viewModel.takeSnapshot() },
                 onFullscreen = onNavigateToCamera,
                 onSettings = onNavigateToSettings,
-                isRecording = isRecording
+                isRecording = isRecording,
+                fps = systemStatus.fps,
+                resolution = systemStatus.resolution,
+                connectionStatusText = if (systemStatus.connectionState == com.example.visionsolano.data.model.ConnectionState.Connected) "ENLACE ESP32 OK" else systemStatus.connectionState.label,
+                streamUrl = viewModel.getStreamUrl(),
+                isSimulated = systemStatus.isSimulated
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // 2. Section: Estado del sistema
-            Text(
-                text = "ESTADO DEL SISTEMA",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "ESTADO DEL SISTEMA",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    )
+                    if (systemStatus.isSimulated) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(WarningAmber.copy(alpha = 0.15f))
+                                .border(1.dp, WarningAmber.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "SIMULADO",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = WarningAmber,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Badge de versión de protocolo
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(CyberCyan.copy(alpha = 0.15f))
+                        .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "PROTOCOLO v${systemStatus.protocolVersion}.0",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = CyberCyan,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(10.dp))
 
             // 2x2 Grid of Status Cards
@@ -114,20 +164,20 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 DeviceStatusCard(
-                    deviceTitle = "FPGA",
+                    deviceTitle = "FPGA (Nexys 4)",
                     statusLabel = systemStatus.fpgaState.label,
                     statusColor = if (systemStatus.fpgaState == DeviceState.ONLINE) StatusGreen else WarningAmber,
                     icon = SurveillanceIcons.Chip,
-                    extraInfo = "Procesamiento Lógico OK",
+                    extraInfo = "Decisión FSM determinista",
                     modifier = Modifier.weight(1f)
                 )
 
                 DeviceStatusCard(
-                    deviceTitle = "ESP-CAM",
-                    statusLabel = systemStatus.espCamState.label,
-                    statusColor = if (systemStatus.espCamState == DeviceState.ONLINE) StatusGreen else WarningAmber,
+                    deviceTitle = "ESP32-S3",
+                    statusLabel = if (systemStatus.esp32Online) "ONLINE" else "OFFLINE",
+                    statusColor = if (systemStatus.esp32Online) StatusGreen else WarningAmber,
                     icon = SurveillanceIcons.Videocam,
-                    extraInfo = "Sensor OV2640 Listo",
+                    extraInfo = if (systemStatus.cameraOnline) "Cámara OV2640 OK" else "Cámara Desconectada",
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -148,16 +198,52 @@ fun DashboardScreen(
                 )
 
                 DeviceStatusCard(
-                    deviceTitle = "Conexión",
-                    statusLabel = systemStatus.connectionStatus.label,
-                    statusColor = when (systemStatus.connectionStatus) {
-                        ConnectionStatus.CONECTADO -> StatusGreen
-                        ConnectionStatus.NO_CONECTADO -> WarningAmber
-                        ConnectionStatus.ENLAZANDO -> CyberCyan
-                    },
-                    icon = SurveillanceIcons.Info,
-                    extraInfo = "Esperando Enlace HW",
+                    deviceTitle = "mDNS / Enlace",
+                    statusLabel = systemStatus.connectionState.label,
+                    statusColor = systemStatus.connectionState.getColor(),
+                    icon = SurveillanceIcons.Refresh,
+                    extraInfo = systemStatus.discoveredDevice?.hostName ?: "Buscando servicio...",
                     modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Fila de telemetría de latido y último contacto
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(DarkSurfaceVariant)
+                    .border(1.dp, CardBorderColor, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(if (systemStatus.heartbeatAge < 3000L) StatusGreen else AlertRed)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Heartbeat: ${if (systemStatus.heartbeatAge > 0) "${systemStatus.heartbeatAge}ms" else "<1s"}",
+                        style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
+                    )
+                }
+
+                Text(
+                    text = if (systemStatus.isSimulated) {
+                        "[SIMULADO] Latencia: ${systemStatus.latencyMs} ms | Wi-Fi: ${systemStatus.wifiSignalDbm} dBm"
+                    } else {
+                        "Latencia: ${systemStatus.latencyMs} ms | Wi-Fi: ${systemStatus.wifiSignalDbm} dBm"
+                    },
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = if (systemStatus.isSimulated) WarningAmber else (if (systemStatus.latencyMs < 20) StatusGreen else WarningAmber),
+                        fontWeight = FontWeight.Medium
+                    )
                 )
             }
 

@@ -2,7 +2,7 @@ package com.example.visionsolano.data.model
 
 data class SurveillanceConfig(
     val espCamIp: String = "192.168.1.50",
-    val espCamPort: Int = 81,
+    val espCamPort: Int = 80,
     val fpgaBridgeIp: String = "192.168.1.100",
     val fpgaPort: Int = 5000,
     val connectionProtocol: String = "TCP Raw",
@@ -14,5 +14,5 @@ data class SurveillanceConfig(
     val audioAlarmOnHighThreat: Boolean = false,
     val autoSaveSnapshots: Boolean = true,
     val firmwareVersion: String = "v1.0-alpha",
-    val hardwareTarget: String = "ESP32-CAM (AI-Thinker) + FPGA Spartan-7"
+    val hardwareTarget: String = "ESP32-S3 + OV2640 + Nexys 4"
 )

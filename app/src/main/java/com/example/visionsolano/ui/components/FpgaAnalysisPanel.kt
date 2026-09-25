@@ -83,15 +83,36 @@ fun FpgaAnalysisPanel(
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f, fill = false)) {
-                        Text(
-                            text = "Análisis FPGA",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                color = TextPrimary,
-                                fontWeight = FontWeight.Bold
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Análisis FPGA",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Bold
+                                )
                             )
-                        )
+                            if (analysis.isSimulated) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(WarningAmber.copy(alpha = 0.15f))
+                                        .border(1.dp, WarningAmber.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "SIMULADO",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = WarningAmber,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 9.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
                         Text(
-                            text = "Decisiones por Hardware en Tiempo Real",
+                            text = if (analysis.isSimulated) "Telemetría simulada (Desarrollo / Mock)" else "Decisiones por Hardware en Tiempo Real",
                             style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary),
                             maxLines = 1
                         )

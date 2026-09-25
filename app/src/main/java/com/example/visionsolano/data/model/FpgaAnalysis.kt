@@ -29,5 +29,6 @@ data class FpgaAnalysis(
     val confidenceScore: Float = 0.96f,
     val processingTimeMs: Float = 1.4f,
     val activeSensorsCount: Int = 4,
-    val lastAnalysisTimestamp: String = "10:25:00"
+    val lastAnalysisTimestamp: String = "10:25:00",
+    val isSimulated: Boolean = false
 )

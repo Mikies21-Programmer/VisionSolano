@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Configuración de seguridad de red para VisionSolano.
+    Seguridad por defecto: Tráfico en texto claro (HTTP) DENEGADO globalmente.
+    Excepción acotada: Permitido EXCLUSIVAMENTE para dominios mDNS locales (.local)
+    asociados a la ESP32-S3 (visionsolano-esp32.local).
+    Sin dependencias de IPs fijas de laboratorio.
+-->
+<network-security-config>
+    <!-- Tráfico cleartext DENEGADO por defecto para todo el tráfico exterior/general de la aplicación -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Ámbito acotado estrictamente a dominios mDNS locales (.local) de la ESP32 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">local</domain>
+        <domain includeSubdomains="true">visionsolano-esp32.local</domain>
+    </domain-config>
+</network-security-config>

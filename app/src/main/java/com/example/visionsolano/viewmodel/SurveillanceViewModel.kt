@@ -9,6 +9,8 @@ import com.example.visionsolano.data.model.FpgaAnalysis
 import com.example.visionsolano.data.model.SecurityEvent
 import com.example.visionsolano.data.model.SurveillanceConfig
 import com.example.visionsolano.data.model.SystemStatus
+import com.example.visionsolano.data.network.NetworkConfig
+import com.example.visionsolano.data.repository.CompositeSurveillanceRepository
 import com.example.visionsolano.data.repository.MockSurveillanceRepository
 import com.example.visionsolano.data.repository.SurveillanceRepository
 import kotlinx.coroutines.Job
@@ -26,7 +28,7 @@ import java.util.Date
 import java.util.Locale
 
 class SurveillanceViewModel(
-    private val repository: SurveillanceRepository = MockSurveillanceRepository()
+    private val repository: SurveillanceRepository = CompositeSurveillanceRepository()
 ) : ViewModel() {
 
     val systemStatus: StateFlow<SystemStatus> = repository.systemStatus.stateIn(
@@ -127,7 +129,7 @@ class SurveillanceViewModel(
                 time = currentTime,
                 source = EventSource.ESP_CAM,
                 priority = EventPriority.BAJA,
-                sensorPayload = "Frame #8491 | Resolución: 640x480 | Formato: JPEG"
+                sensorPayload = "Frame #8491 | Resolución: ${systemStatus.value.resolution} | Formato: JPEG"
             )
         )
     }
@@ -179,6 +181,46 @@ class SurveillanceViewModel(
             _connectionTestStatus.value = "Enlace OK: ESP-CAM Ping 12ms | FPGA UART Bridge Respondio ACK"
             delay(3500)
             _connectionTestStatus.value = null
+        }
+    }
+
+    // Estado y control del permiso de red local (ACCESS_LOCAL_NETWORK para SDK 37+)
+    private val _isLocalNetworkPermissionDenied = MutableStateFlow(false)
+    val isLocalNetworkPermissionDenied: StateFlow<Boolean> = _isLocalNetworkPermissionDenied.asStateFlow()
+
+    fun onLocalNetworkPermissionResult(granted: Boolean) {
+        if (granted) {
+            _isLocalNetworkPermissionDenied.value = false
+            startDiscovery()
+        } else {
+            _isLocalNetworkPermissionDenied.value = true
+        }
+    }
+
+    fun dismissLocalNetworkPermissionDenied() {
+        _isLocalNetworkPermissionDenied.value = false
+    }
+
+    // Funciones de descubrimiento automático por mDNS / NSD
+    fun startDiscovery() {
+        repository.startDiscovery()
+    }
+
+    fun stopDiscovery() {
+        repository.stopDiscovery()
+    }
+
+    /**
+     * Retorna la URL dinámica del stream de vídeo resolviendo el host/IP descubierto.
+     * No depende de una IP hardcodeada.
+     */
+    fun getStreamUrl(): String {
+        val status = systemStatus.value
+        val device = status.discoveredDevice
+        return if (device != null) {
+            device.streamUrl
+        } else {
+            NetworkConfig.buildStreamUrl(config.value.espCamIp, config.value.espCamPort)
         }
     }
 }

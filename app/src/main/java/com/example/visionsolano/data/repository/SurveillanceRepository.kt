@@ -1,5 +1,7 @@
 package com.example.visionsolano.data.repository
 
+import com.example.visionsolano.data.model.ConnectionState
+import com.example.visionsolano.data.model.ConnectionStatus
 import com.example.visionsolano.data.model.DeviceState
 import com.example.visionsolano.data.model.EventPriority
 import com.example.visionsolano.data.model.EventSource
@@ -9,10 +11,16 @@ import com.example.visionsolano.data.model.SurveillanceConfig
 import com.example.visionsolano.data.model.SystemMode
 import com.example.visionsolano.data.model.SystemStatus
 import com.example.visionsolano.data.model.ThreatLevel
+import com.example.visionsolano.data.model.VisionSolanoDevice
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 interface SurveillanceRepository {
     val systemStatus: Flow<SystemStatus>
@@ -25,20 +33,40 @@ interface SurveillanceRepository {
     fun resetThreatToNormal()
     fun addSecurityEvent(event: SecurityEvent)
     fun toggleSurveillance(active: Boolean)
+
+    // Métodos preparados para el ciclo de vida de descubrimiento
+    fun startDiscovery() {}
+    fun stopDiscovery() {}
 }
 
-class MockSurveillanceRepository : SurveillanceRepository {
+class MockSurveillanceRepository(
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
+) : SurveillanceRepository {
+
+    // Dispositivo Mock predeterminado
+    // ACLARACIÓN: 192.168.1.50 es únicamente un dato de prueba/mock, NO una IP fija del producto.
+    private val mockDiscoveredDevice = VisionSolanoDevice.createMockDevice()
 
     private val _systemStatus = MutableStateFlow(
         SystemStatus(
             fpgaState = DeviceState.ONLINE,
             espCamState = DeviceState.ONLINE,
             systemMode = SystemMode.ACTIVO,
-            connectionStatus = com.example.visionsolano.data.model.ConnectionStatus.NO_CONECTADO,
+            connectionStatus = ConnectionStatus.CONECTADO,
+            connectionState = ConnectionState.Connected,
             latencyMs = 8,
             uptimeHours = "03:42:15",
-            wifiSignalDbm = -58,
-            powerSupplyVoltage = 12.2f
+            wifiSignalDbm = -54,
+            powerSupplyVoltage = 12.2f,
+            lastContact = System.currentTimeMillis(),
+            heartbeatAge = 0L,
+            esp32Online = true,
+            cameraOnline = true,
+            protocolVersion = 1,
+            fps = 30,
+            resolution = "640 x 480",
+            discoveredDevice = mockDiscoveredDevice,
+            isSimulated = true
         )
     )
     override val systemStatus: Flow<SystemStatus> = _systemStatus.asStateFlow()
@@ -53,7 +81,8 @@ class MockSurveillanceRepository : SurveillanceRepository {
             confidenceScore = 0.98f,
             processingTimeMs = 1.2f,
             activeSensorsCount = 4,
-            lastAnalysisTimestamp = "10:25"
+            lastAnalysisTimestamp = "10:25",
+            isSimulated = true
         )
     )
     override val fpgaAnalysis: Flow<FpgaAnalysis> = _fpgaAnalysis.asStateFlow()
@@ -121,6 +150,8 @@ class MockSurveillanceRepository : SurveillanceRepository {
     private val _config = MutableStateFlow(SurveillanceConfig())
     override val config: Flow<SurveillanceConfig> = _config.asStateFlow()
 
+    private var discoverySimulationJob: Job? = null
+
     override fun updateConfig(config: SurveillanceConfig) {
         _config.value = config
     }
@@ -177,5 +208,39 @@ class MockSurveillanceRepository : SurveillanceRepository {
         _config.update {
             it.copy(surveillanceActive = active)
         }
+    }
+
+    override fun startDiscovery() {
+        discoverySimulationJob?.cancel()
+        discoverySimulationJob = scope.launch {
+            _systemStatus.update {
+                it.copy(
+                    connectionState = ConnectionState.Searching,
+                    connectionStatus = ConnectionStatus.ENLAZANDO,
+                    espCamState = DeviceState.STANDBY
+                )
+            }
+            delay(1200)
+            _systemStatus.update {
+                it.copy(
+                    connectionState = ConnectionState.Discovered,
+                    discoveredDevice = mockDiscoveredDevice
+                )
+            }
+            delay(800)
+            _systemStatus.update {
+                it.copy(
+                    connectionState = ConnectionState.Connected,
+                    connectionStatus = ConnectionStatus.CONECTADO,
+                    espCamState = DeviceState.ONLINE,
+                    lastContact = System.currentTimeMillis(),
+                    heartbeatAge = 0L
+                )
+            }
+        }
+    }
+
+    override fun stopDiscovery() {
+        discoverySimulationJob?.cancel()
     }
 }
